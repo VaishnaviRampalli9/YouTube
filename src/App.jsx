@@ -1,41 +1,11 @@
 import { useEffect, useState } from "react";
+import { throttle } from "lodash";
+import axios from "axios";
 
 import Card from "./components/Card";
 import LoadingSpinner from "./components/LoadingSpinner";
 import ErrorMessage from "./components/ErrorMessage";
-
-function randomDuration() {
-  const min = Math.floor(Math.random() * 60)
-    .toString()
-    .padStart(2, "0");
-  const sec = Math.floor(Math.random() * 60)
-    .toString()
-    .padStart(2, "0");
-  return `${min}:${sec}`;
-}
-
-function randomAge() {
-  const units = [
-    { name: "year", max: 10 },
-    { name: "month", max: 11 },
-    { name: "day", max: 30 },
-    { name: "hour", max: 23 },
-    { name: "minute", max: 59 },
-  ];
-  const unit = units[Math.floor(Math.random() * units.length)];
-  const value = Math.floor(Math.random() * unit.max) + 1;
-  return value === 0
-    ? "Just now"
-    : `${value} ${unit.name}${value > 1 ? "s" : ""} ago`;
-}
-
-function randomViews() {
-  const views = Math.random() * 2_000_000;
-  if (views >= 1_000_000) {
-    return (views / 1_000_000).toFixed(1) + "M";
-  }
-  return Math.floor(views / 1000) + "K";
-}
+import { randomAge, randomDuration, randomViews } from "./util/helperFunctions";
 
 function App() {
   const [photos, setPhotos] = useState([]);
@@ -45,37 +15,34 @@ function App() {
 
   useEffect(() => {
     let ignore = false;
+    console.log("page is:", page);
     async function fetchData() {
       try {
         setIsLoading(true);
         setError(null);
-        const [picssRes, titlesRes] = await Promise.all([
-          fetch(`https://picsum.photos/v2/list?page=${page}&limit=10`),
-          fetch(
+
+        const [pics, titles] = await Promise.all([
+          axios.get(`https://picsum.photos/v2/list?page=${page}&limit=10`),
+          axios.get(
             `https://jsonplaceholder.typicode.com/photos?_page=${page}&_limit=10`
           ),
         ]);
 
-        if (!picssRes.ok || !titlesRes.ok) {
-          throw new Error("Failed to fetch data");
-        }
-
-        let pics = await picssRes.json();
-        let titles = await titlesRes.json();
-        pics = pics.map((pic, index) => ({
+        let mapped = pics.data.map((pic, index) => ({
           ...pic,
-          title: titles[index]?.title || "LOREM IPSUM DOLOR SIT",
+          title: titles.data[index]?.title || "LOREM IPSUM DOLOR SIT",
           views: randomViews(),
           duration: randomDuration(),
           age: randomAge(),
         }));
+
         if (!ignore) {
-          setPhotos((prev) => [...prev, ...pics]);
+          setPhotos((prev) => [...prev, ...mapped]);
+          setIsLoading(false);
         }
-        setIsLoading(false);
       } catch (e) {
         setIsLoading(false);
-        setError(e?.message || "Something went wrong");
+        setError("Failed to fetch data " + e.message);
       }
     }
 
@@ -86,17 +53,18 @@ function App() {
   }, [page]);
 
   useEffect(() => {
-    function handleScroll() {
+    const handleScroll = throttle(() => {
       if (
+        !isLoading &&
         window.innerHeight + window.scrollY >=
-        document.documentElement.scrollHeight - 200
+          document.documentElement.scrollHeight - 200
       ) {
         setPage((p) => p + 1);
       }
-    }
+    }, 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isLoading]);
 
   return (
     <div className="min-h-screen dark:bg-[rgb(15,15,15)] ">
