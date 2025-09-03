@@ -1,3 +1,5 @@
+import axios from "axios";
+
 export function randomDuration() {
   const min = Math.floor(Math.random() * 60)
     .toString()
@@ -40,4 +42,21 @@ export function handleAuthorClick(e, author) {
   e.stopPropagation();
   // window.location.href = `https://www.google.com/search?q=${author}`;
   window.open(`https://www.google.com/search?q=${author}`, "_blank");
+}
+
+export async function getPhotos(pageToLoad) {
+  const [pics, titles] = await Promise.all([
+    axios.get(`https://picsum.photos/v2/list?page=${pageToLoad}&limit=10`),
+    axios.get(
+      `https://jsonplaceholder.typicode.com/photos?_page=${pageToLoad}&_limit=10`
+    ),
+  ]);
+
+  return pics.data.map((pic, index) => ({
+    ...pic,
+    title: titles.data[index]?.title || "LOREM IPSUM DOLOR SIT",
+    views: randomViews(),
+    duration: randomDuration(),
+    age: randomAge(),
+  }));
 }

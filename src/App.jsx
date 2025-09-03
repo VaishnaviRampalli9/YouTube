@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import axios from "axios";
+import { useEffect, useRef, useState } from "react";
 
 import Card from "./components/Card";
 import LoadingSpinner from "./components/LoadingSpinner";
 import ErrorMessage from "./components/ErrorMessage";
-import { randomAge, randomDuration, randomViews } from "./util/helperFunctions";
+import { getPhotos } from "./util/helperFunctions";
 
+let didRun = false;
 function App() {
   const [photos, setPhotos] = useState([]);
   const [page, setPage] = useState(1);
@@ -14,47 +14,37 @@ function App() {
 
   const loaderRef = useRef();
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async (pageToLoad) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const [pics, titles] = await Promise.all([
-        axios.get(`https://picsum.photos/v2/list?page=${page}&limit=10`),
-        axios.get(
-          `https://jsonplaceholder.typicode.com/photos?_page=${page}&_limit=10`
-        ),
-      ]);
-
-      let mapped = pics.data.map((pic, index) => ({
-        ...pic,
-        title: titles.data[index]?.title || "LOREM IPSUM DOLOR SIT",
-        views: randomViews(),
-        duration: randomDuration(),
-        age: randomAge(),
-      }));
+      const mapped = await getPhotos(pageToLoad);
 
       setPhotos((prev) => [...prev, ...mapped]);
-      setPage((p) => p + 1);
+      setPage(pageToLoad + 1);
     } catch (e) {
       setError("Failed to fetch data " + e.message);
     } finally {
       setIsLoading(false);
     }
-  }, [page]);
+  };
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if(!didRun){
+      fetchData(1);
+      didRun = true;
+    }
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !isLoading && photos.length > 0) {
-          fetchData();
+          fetchData(page);
         }
       },
-      { threshold: 1.0 } // trigger when fully in view
+      { threshold: 1 }
     );
 
     const current = loaderRef.current;
@@ -63,7 +53,7 @@ function App() {
     return () => {
       if (current) observer.unobserve(current);
     };
-  }, [isLoading, photos, fetchData]);
+  }, [isLoading, photos, page]);
 
   return (
     <div className="min-h-screen dark:bg-[rgb(15,15,15)] ">
@@ -75,7 +65,6 @@ function App() {
       {error && <ErrorMessage message={error} />}
       {isLoading && <LoadingSpinner />}
       {!isLoading && <div ref={loaderRef} className="h-10"></div>}
-      {/* sentinel */}
     </div>
   );
 }
