@@ -1,102 +1,59 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Card from "./components/Card";
 import LoadingSpinner from "./components/LoadingSpinner";
 import ErrorMessage from "./components/ErrorMessage";
+import { getPhotos } from "./util/helperFunctions";
 
-function randomDuration() {
-  const min = Math.floor(Math.random() * 60)
-    .toString()
-    .padStart(2, "0");
-  const sec = Math.floor(Math.random() * 60)
-    .toString()
-    .padStart(2, "0");
-  return `${min}:${sec}`;
-}
-
-function randomAge() {
-  const units = [
-    { name: "year", max: 10 },
-    { name: "month", max: 11 },
-    { name: "day", max: 30 },
-    { name: "hour", max: 23 },
-    { name: "minute", max: 59 },
-  ];
-  const unit = units[Math.floor(Math.random() * units.length)];
-  const value = Math.floor(Math.random() * unit.max) + 1;
-  return value === 0
-    ? "Just now"
-    : `${value} ${unit.name}${value > 1 ? "s" : ""} ago`;
-}
-
-function randomViews() {
-  const views = Math.random() * 2_000_000;
-  if (views >= 1_000_000) {
-    return (views / 1_000_000).toFixed(1) + "M";
-  }
-  return Math.floor(views / 1000) + "K";
-}
-
+let didRun = false;
 function App() {
   const [photos, setPhotos] = useState([]);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let ignore = false;
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const [picssRes, titlesRes] = await Promise.all([
-          fetch(`https://picsum.photos/v2/list?page=${page}&limit=10`),
-          fetch(
-            `https://jsonplaceholder.typicode.com/photos?_page=${page}&_limit=10`
-          ),
-        ]);
+  const loaderRef = useRef();
 
-        if (!picssRes.ok || !titlesRes.ok) {
-          throw new Error("Failed to fetch data");
-        }
+  const fetchData = async (pageToLoad) => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        let pics = await picssRes.json();
-        let titles = await titlesRes.json();
-        pics = pics.map((pic, index) => ({
-          ...pic,
-          title: titles[index]?.title || "LOREM IPSUM DOLOR SIT",
-          views: randomViews(),
-          duration: randomDuration(),
-          age: randomAge(),
-        }));
-        if (!ignore) {
-          setPhotos((prev) => [...prev, ...pics]);
-        }
-        setIsLoading(false);
-      } catch (e) {
-        setIsLoading(false);
-        setError(e?.message || "Something went wrong");
-      }
+      const mapped = await getPhotos(pageToLoad);
+
+      setPhotos((prev) => [...prev, ...mapped]);
+      setPage(pageToLoad + 1);
+    } catch (e) {
+      setError("Failed to fetch data " + e.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    fetchData();
-    return () => {
-      ignore = true;
-    };
-  }, [page]);
+  };
 
   useEffect(() => {
-    function handleScroll() {
-      if (
-        window.innerHeight + window.scrollY >=
-        document.documentElement.scrollHeight - 200
-      ) {
-        setPage((p) => p + 1);
-      }
+    if(!didRun){
+      fetchData(1);
+      didRun = true;
     }
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoading && photos.length > 0) {
+          fetchData(page);
+        }
+      },
+      { threshold: 1 }
+    );
+
+    const current = loaderRef.current;
+    if (current) observer.observe(current);
+
+    return () => {
+      if (current) observer.unobserve(current);
+    };
+  }, [isLoading, photos, page]);
 
   return (
     <div className="min-h-screen dark:bg-[rgb(15,15,15)] ">
@@ -107,6 +64,7 @@ function App() {
       </ul>
       {error && <ErrorMessage message={error} />}
       {isLoading && <LoadingSpinner />}
+      {!isLoading && <div ref={loaderRef} className="h-10"></div>}
     </div>
   );
 }
