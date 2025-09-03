@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { throttle } from "lodash";
+import { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
 
 import Card from "./components/Card";
@@ -13,58 +12,58 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let ignore = false;
-    console.log("page is:", page);
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const loaderRef = useRef();
 
-        const [pics, titles] = await Promise.all([
-          axios.get(`https://picsum.photos/v2/list?page=${page}&limit=10`),
-          axios.get(
-            `https://jsonplaceholder.typicode.com/photos?_page=${page}&_limit=10`
-          ),
-        ]);
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        let mapped = pics.data.map((pic, index) => ({
-          ...pic,
-          title: titles.data[index]?.title || "LOREM IPSUM DOLOR SIT",
-          views: randomViews(),
-          duration: randomDuration(),
-          age: randomAge(),
-        }));
+      const [pics, titles] = await Promise.all([
+        axios.get(`https://picsum.photos/v2/list?page=${page}&limit=10`),
+        axios.get(
+          `https://jsonplaceholder.typicode.com/photos?_page=${page}&_limit=10`
+        ),
+      ]);
 
-        if (!ignore) {
-          setPhotos((prev) => [...prev, ...mapped]);
-          setIsLoading(false);
-        }
-      } catch (e) {
-        setIsLoading(false);
-        setError("Failed to fetch data " + e.message);
-      }
+      let mapped = pics.data.map((pic, index) => ({
+        ...pic,
+        title: titles.data[index]?.title || "LOREM IPSUM DOLOR SIT",
+        views: randomViews(),
+        duration: randomDuration(),
+        age: randomAge(),
+      }));
+
+      setPhotos((prev) => [...prev, ...mapped]);
+      setPage((p) => p + 1);
+    } catch (e) {
+      setError("Failed to fetch data " + e.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    fetchData();
-    return () => {
-      ignore = true;
-    };
   }, [page]);
 
   useEffect(() => {
-    const handleScroll = throttle(() => {
-      if (
-        !isLoading &&
-        window.innerHeight + window.scrollY >=
-          document.documentElement.scrollHeight - 200
-      ) {
-        setPage((p) => p + 1);
-      }
-    }, 300);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isLoading]);
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoading && photos.length > 0) {
+          fetchData();
+        }
+      },
+      { threshold: 1.0 } // trigger when fully in view
+    );
+
+    const current = loaderRef.current;
+    if (current) observer.observe(current);
+
+    return () => {
+      if (current) observer.unobserve(current);
+    };
+  }, [isLoading, photos, fetchData]);
 
   return (
     <div className="min-h-screen dark:bg-[rgb(15,15,15)] ">
@@ -75,6 +74,8 @@ function App() {
       </ul>
       {error && <ErrorMessage message={error} />}
       {isLoading && <LoadingSpinner />}
+      {!isLoading && <div ref={loaderRef} className="h-10"></div>}
+      {/* sentinel */}
     </div>
   );
 }
