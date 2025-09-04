@@ -5,12 +5,12 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import ErrorMessage from "./components/ErrorMessage";
 import { getPhotos } from "./util/helperFunctions";
 
-let didRun = false;
 function App() {
   const [photos, setPhotos] = useState([]);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  // console.log("State set")
 
   const loaderRef = useRef();
 
@@ -18,33 +18,28 @@ function App() {
     try {
       setIsLoading(true);
       setError(null);
-
+      // console.log("pre call")
       const mapped = await getPhotos(pageToLoad);
 
       setPhotos((prev) => [...prev, ...mapped]);
-      setPage(pageToLoad + 1);
+      setPage(p => p+1);
     } catch (e) {
-      setError("Failed to fetch data " + e.message);
+      setError("Failed to fetch data " + (e?.message || String(e)));
     } finally {
       setIsLoading(false);
+      // console.log("post  call")
     }
   };
 
   useEffect(() => {
-    if(!didRun){
-      fetchData(1);
-      didRun = true;
-    }
-  }, []);
-
-  useEffect(() => {
+    // console.log("In effect");
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !isLoading && photos.length > 0) {
+        if (entry.isIntersecting && !isLoading ) {
           fetchData(page);
         }
       },
-      { threshold: 1 }
+      { threshold: 0, rootMargin: "200px" }
     );
 
     const current = loaderRef.current;
@@ -53,7 +48,7 @@ function App() {
     return () => {
       if (current) observer.unobserve(current);
     };
-  }, [isLoading, photos, page]);
+  }, [isLoading, page]);
 
   return (
     <div className="min-h-screen dark:bg-[rgb(15,15,15)] ">
