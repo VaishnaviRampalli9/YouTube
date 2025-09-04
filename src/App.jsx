@@ -5,8 +5,12 @@ import { getPhotos } from "./util/helperFunctions";
 import useLoader from "./util/useLoader";
 
 function App() {
-  const {data: photos, error, loaderRef, isLoading} = useLoader(getPhotos);
-  console.log("RENDERING APP")
+  const {
+    data: photos,
+    isLoading,
+    error,
+    loaderRef,
+  } = useLoader(getPhotos);
 
   return (
     <div className="min-h-screen dark:bg-[rgb(15,15,15)] ">
@@ -17,7 +21,7 @@ function App() {
       </ul>
       {error && <ErrorMessage message={error} />}
       {isLoading && <LoadingSpinner />}
-      {!isLoading && <div ref={loaderRef} className="h-10"></div>}
+      {<div id="sentinel" ref={loaderRef} className="h-10"></div>}
     </div>
   );
 }

@@ -9,37 +9,38 @@ export default function useLoader(fetchFunction) {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
 
   const loaderRef = useRef();
-  console.log("In Loader");
-  
+  const pageRef = useRef(1);
+  const isLoadingRef = useRef(false);
+
   const fetchData = useCallback(
-    async (pageToLoad) => {
+    async () => {
+      if (isLoadingRef.current) return;
+      isLoadingRef.current = true;
+      setIsLoading(true);
+      setError(null);
+
       try {
-        setIsLoading(true);
-        setError(null);
-        console.log("pre call");
-        const mapped = await fetchFunction(pageToLoad);
+        const mapped = await fetchFunction(pageRef.current);
 
         setData((prev) => [...prev, ...mapped]);
-        setPage((p) => p + 1);
+        pageRef.current += 1;
       } catch (e) {
         setError("Failed to fetch data " + (e?.message || String(e)));
       } finally {
+        isLoadingRef.current = false;
         setIsLoading(false);
-        console.log("post  call");
       }
     },
     [fetchFunction]
   );
 
   useEffect(() => {
-    console.log("In effect");
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !isLoading) {
-          fetchData(page);
+        if (entry.isIntersecting) {
+          fetchData();
         }
       },
       { threshold: 0, rootMargin: "200px" }
@@ -51,7 +52,7 @@ export default function useLoader(fetchFunction) {
     return () => {
       if (current) observer.unobserve(current);
     };
-  }, [isLoading, page, fetchData]);
+  }, [fetchData]);
 
-  return { data, error, loaderRef, isLoading };
+  return { data, isLoading, error, loaderRef };
 }

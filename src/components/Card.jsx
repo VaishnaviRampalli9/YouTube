@@ -4,7 +4,6 @@ import { handleAuthorClick, handleCardClick } from "../util/helperFunctions";
 
 const Card = memo(
   ({ title, download_url, views, duration, age, author }) => {
-    // console.log("card id: ", id);
 
     return (
       <div className="p-4">
