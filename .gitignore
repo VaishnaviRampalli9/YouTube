@@ -26,3 +26,5 @@ dist-ssr
 # Firebase local CLI files
 .firebase/
 firebase-debug.log
+
+Debug.md

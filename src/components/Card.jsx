@@ -3,8 +3,7 @@ import { memo } from "react";
 import { handleAuthorClick, handleCardClick } from "../util/helperFunctions";
 
 const Card = memo(
-  ({ id, title, download_url, views, duration, age, author }) => {
-    console.log("card id: ", id);
+  ({ title, download_url, views, duration, age, author }) => {
 
     return (
       <div className="p-4">
@@ -18,7 +17,7 @@ const Card = memo(
             alt={title}
             loading="lazy"
           />
-          <p className=" dark:text-white absolute bottom-2 right-2 bg-black bg-opacity-75 text-xs px-1 rounded">
+          <p className=" text-white absolute bottom-2 right-2 bg-black bg-opacity-75 text-xs px-1 rounded">
             {duration}
           </p>
         </div>

@@ -46,15 +46,15 @@ export function handleAuthorClick(e, author) {
 
 export async function getPhotos(pageToLoad) {
   const [pics, titles] = await Promise.all([
-    axios.get(`https://picsum.photos/v2/list?page=${pageToLoad}&limit=10`),
+    axios.get(`https://picsum.photos/v2/list?page=${pageToLoad}&limit=10`).then(r=>r.data),
     axios.get(
       `https://jsonplaceholder.typicode.com/photos?_page=${pageToLoad}&_limit=10`
-    ),
+    ).then(r=>r.data),
   ]);
 
-  return pics.data.map((pic, index) => ({
+  return pics.map((pic, index) => ({
     ...pic,
-    title: titles.data[index]?.title || "LOREM IPSUM DOLOR SIT",
+    title: titles[index]?.title || "LOREM IPSUM DOLOR SIT",
     views: randomViews(),
     duration: randomDuration(),
     age: randomAge(),
