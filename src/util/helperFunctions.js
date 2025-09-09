@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export function randomDuration() {
+function randomDuration() {
   const min = Math.floor(Math.random() * 60)
     .toString()
     .padStart(2, "0");
@@ -10,7 +10,7 @@ export function randomDuration() {
   return `${min}:${sec}`;
 }
 
-export function randomAge() {
+function randomAge() {
   const units = [
     { name: "year", max: 10 },
     { name: "month", max: 11 },
@@ -25,12 +25,19 @@ export function randomAge() {
     : `${value} ${unit.name}${value > 1 ? "s" : ""} ago`;
 }
 
-export function randomViews() {
+function randomViews() {
   const views = Math.random() * 2_000_000;
   if (views >= 1_000_000) {
     return (views / 1_000_000).toFixed(1) + "M";
   }
   return Math.floor(views / 1000) + "K";
+}
+
+function formDisplayUrl(url, maxWidth = 348, maxHeight = 228) {
+  const parts = url.split("/"); // ["https:", "", "picsum.photos", "id", "0", "5000", "3333"]
+  parts[parts.length - 2] = maxWidth;
+  parts[parts.length - 1] = maxHeight;
+  return parts.join("/");
 }
 
 export function handleCardClick(download_url) {
@@ -46,10 +53,14 @@ export function handleAuthorClick(e, author) {
 
 export async function getPhotos(pageToLoad) {
   const [pics, titles] = await Promise.all([
-    axios.get(`https://picsum.photos/v2/list?page=${pageToLoad}&limit=10`).then(r=>r.data),
-    axios.get(
-      `https://jsonplaceholder.typicode.com/photos?_page=${pageToLoad}&_limit=10`
-    ).then(r=>r.data),
+    axios
+      .get(`https://picsum.photos/v2/list?page=${pageToLoad}&limit=10`)
+      .then((r) => r.data),
+    axios
+      .get(
+        `https://jsonplaceholder.typicode.com/photos?_page=${pageToLoad}&_limit=10`
+      )
+      .then((r) => r.data),
   ]);
 
   return pics.map((pic, index) => ({
@@ -58,5 +69,6 @@ export async function getPhotos(pageToLoad) {
     views: randomViews(),
     duration: randomDuration(),
     age: randomAge(),
+    displayUrl: formDisplayUrl(pic.download_url),
   }));
 }

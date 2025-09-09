@@ -14,7 +14,7 @@ function App() {
 
   return (
     <div className="min-h-screen dark:bg-[rgb(15,15,15)] ">
-      <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4">
+      <ul className="grid grid-cols-1 customsm:grid-cols-2 custommd:grid-cols-3 gap-4 p-4">
         {photos.map((photo) => (
           <Card key={photo.id} {...photo} />
         ))}
